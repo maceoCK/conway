@@ -1,7 +1,7 @@
 body {
     width: 100vw;
     height: 100vh;
-    background-color: #000;
+    background: linear-gradient(to top, rgb(97, 0, 0), black);
     color: white;
 }
 

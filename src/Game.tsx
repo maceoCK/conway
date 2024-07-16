@@ -13,6 +13,7 @@ const Game = (props: any) => {
     const [_, setGrid] = useState(buildGrid());
     const [numberOfClicks, setNumberOfClicks] = useState(0); // State to track number of clicks
     const [startTime, setStartTime] = useState(Date.now()); // State to track start time
+    const [clicksMode, setClicksMode] = useState(false);
 
     function buildGrid() {
         const grid = new Array(canvasSize.width / canvasSize.resolution)
@@ -25,16 +26,7 @@ const Game = (props: any) => {
         return grid;
     }
 
-    const reset = () => {
-        setStartTime(Date.now());
-        setNumberOfClicks(0);
-        const win = () => {
-            console.log("You won!");
-            if (animationRef.current) {
-                cancelAnimationFrame(animationRef.current);
-            }
-        };
-
+    const setUp = () => {
         const canvas = canvasRef.current;
         if (canvas) {
             canvas.width = canvasSize.width;
@@ -50,25 +42,49 @@ const Game = (props: any) => {
                         render(newGrid, context);
                         if (totalNeighbors === 0) {
                             win();
-                            return newGrid;
                         }
+                        return newGrid;
+                    });
+                    
+                    animationRef.current = requestAnimationFrame(animate);
+                };
+                animate();
+            }
+        }
+    };
+
+    const reset = () => {
+        setStartTime(Date.now());
+        setNumberOfClicks(0);
+        if (animationRef.current) {
+            cancelAnimationFrame(animationRef.current);
+        }
+        const canvas = canvasRef.current;
+        if (canvas) {
+            canvas.width = canvasSize.width;
+            canvas.height = canvasSize.height;
+            const context = canvas.getContext("2d");
+            if (context) {
+                const grid = buildGrid();
+                setGrid(grid);
+                render(grid, context);
+                const animate = () => {
+                    setGrid((prevGrid) => {
+                        const { newGrid } = updateGrid(prevGrid);
+                        render(newGrid, context);
                         return newGrid;
                     });
                     animationRef.current = requestAnimationFrame(animate);
                 };
                 animate();
             }
-            canvas.addEventListener("click", (event) =>
-                handleClick(event, canvas)
-            );
-            return () => {
-                canvas.removeEventListener("click", (event) =>
-                    handleClick(event, canvas)
-                );
-                if (animationRef.current) {
-                    cancelAnimationFrame(animationRef.current);
-                }
-            };
+        }
+    };
+
+    const win = () => {
+        console.log("You won!");
+        if (animationRef.current) {
+            cancelAnimationFrame(animationRef.current);
         }
     };
 
@@ -122,13 +138,15 @@ const Game = (props: any) => {
                     canvasSize.resolution,
                     canvasSize.resolution
                 );
-                context.fillStyle = cell === 1 ? "white" : "black";
+                context.fillStyle =
+                    cell === 1 ? "white" : "rgba(255, 255, 255, 0)";
                 context.fill();
             }
         }
     }
 
-    function handleClick(event: MouseEvent, canvas: HTMLCanvasElement) {
+    function handleClick(event: MouseEvent) {
+        const canvas = event.target as HTMLCanvasElement;
         const rect = canvas.getBoundingClientRect();
         const x = Math.floor(
             (event.clientX - rect.left) / canvasSize.resolution
@@ -152,14 +170,14 @@ const Game = (props: any) => {
     }
 
     useEffect(() => {
-        reset(); // Call reset on component mount
-
+        const canvas = canvasRef.current;
+        if (canvas) {
+            canvas.addEventListener("click", handleClick);
+        }
+        setUp();
         return () => {
-            const canvas = canvasRef.current;
             if (canvas) {
-                canvas.removeEventListener("click", (event) =>
-                    handleClick(event, canvas)
-                );
+                canvas.removeEventListener("click", handleClick);
             }
             if (animationRef.current) {
                 cancelAnimationFrame(animationRef.current);
@@ -179,10 +197,35 @@ const Game = (props: any) => {
                 height: "100%",
             }}
         >
-            <div className="game-controls" style={{ width: "100%" }}>
+            <div
+                className="game-controls"
+                style={{
+                    width: "30%",
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: "20px",
+                }}
+            >
                 <Button
                     variant="contained"
-                    onClick={reset} // Call reset on button click
+                    onClick={() => setClicksMode(!clicksMode)}
+                    fullWidth
+                    style={{
+                        backgroundColor: "blue",
+                        color: "black",
+                        padding: "20px",
+                        fontSize: "50px",
+                        fontWeight: "bold",
+                        borderRadius: "10px",
+                    }}
+                >
+                    {clicksMode ? "Clicks" : "Time"}
+                </Button>
+                <Button
+                    variant="contained"
+                    onClick={reset}
                     fullWidth
                     style={{
                         backgroundColor: "red",
@@ -196,16 +239,30 @@ const Game = (props: any) => {
                     Reset
                 </Button>
             </div>
-            <canvas
-                ref={canvasRef}
-                {...props}
-                style={{ border: "1px solid black" }}
-            />
-            <div className="game-info">
-                <h3>Number Of Clicks: {numberOfClicks}</h3>
-                <h3>
-                    Time: {((Date.now() - startTime) / 1000).toFixed(2)} seconds
-                </h3>
+            <div
+                className="game-container"
+                style={{
+                    display: "flex",
+                    flexDirection: "column-reverse",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    width: "100%",
+                    height: "100%",
+                }}
+            >
+                <canvas
+                    ref={canvasRef}
+                    {...props}
+                    style={{ border: "2px solid white" }}
+                />
+                {clicksMode ? (
+                    <h3>Number Of Clicks: {numberOfClicks}</h3>
+                ) : (
+                    <h3>
+                        Time: {((Date.now() - startTime) / 1000).toFixed(2)}{" "}
+                        seconds
+                    </h3>
+                )}
             </div>
         </div>
     );
