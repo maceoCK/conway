@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Button } from "@mui/material";
+import { Button, Modal, Tabs, Tab } from "@mui/material";
 
 const canvasSize = {
     width: 500,
@@ -14,6 +14,8 @@ const Game = (props: any) => {
     const [numberOfClicks, setNumberOfClicks] = useState(0); // State to track number of clicks
     const [startTime, setStartTime] = useState(Date.now()); // State to track start time
     const [clicksMode, setClicksMode] = useState(false);
+    const [won, setWon] = useState(false);
+    const [value, setValue] = useState("leaderboard"); // State to manage current tab
 
     function buildGrid() {
         const grid = new Array(canvasSize.width / canvasSize.resolution)
@@ -21,7 +23,7 @@ const Game = (props: any) => {
             .map(() =>
                 new Array(canvasSize.height / canvasSize.resolution)
                     .fill(null)
-                    .map(() => (Math.floor(Math.random() * 2) === 0 ? 1 : 0))
+                    .map(() => (Math.floor(Math.random() * 20) === 0 ? 1 : 0))
             );
         return grid;
     }
@@ -37,15 +39,15 @@ const Game = (props: any) => {
                 render(grid, context);
                 const animate = () => {
                     setGrid((prevGrid) => {
-                        const { newGrid, totalNeighbors } =
-                            updateGrid(prevGrid);
+                        const newGrid = updateGrid(prevGrid);
                         render(newGrid, context);
-                        if (totalNeighbors === 0) {
+                        const alive = countAlive(newGrid);
+                        if (alive === 0) {
                             win();
                         }
                         return newGrid;
                     });
-                    
+
                     animationRef.current = requestAnimationFrame(animate);
                 };
                 animate();
@@ -70,8 +72,12 @@ const Game = (props: any) => {
                 render(grid, context);
                 const animate = () => {
                     setGrid((prevGrid) => {
-                        const { newGrid } = updateGrid(prevGrid);
+                        const newGrid = updateGrid(prevGrid);
                         render(newGrid, context);
+                        const alive = countAlive(newGrid);
+                        if (alive === 0) {
+                            win();
+                        }
                         return newGrid;
                     });
                     animationRef.current = requestAnimationFrame(animate);
@@ -82,10 +88,10 @@ const Game = (props: any) => {
     };
 
     const win = () => {
-        console.log("You won!");
         if (animationRef.current) {
             cancelAnimationFrame(animationRef.current);
         }
+        setWon(true);
     };
 
     function calculateNeighbors(grid: Array<Array<any>>, x: number, y: number) {
@@ -106,9 +112,18 @@ const Game = (props: any) => {
         return neighbors;
     }
 
+    function countAlive(grid: Array<Array<any>>) {
+        let count = 0;
+        for (let x = 0; x < grid.length; x++) {
+            for (let y = 0; y < grid[x].length; y++) {
+                count += grid[x][y];
+            }
+        }
+        return count;
+    }
+
     function updateGrid(grid: Array<Array<any>>) {
         const newGrid = grid.map((row) => row.map((cell) => cell));
-        let totalNeighbors = 0;
         for (let x = 0; x < grid.length; x++) {
             for (let y = 0; y < grid[x].length; y++) {
                 const neighbors = calculateNeighbors(grid, x, y);
@@ -117,10 +132,9 @@ const Game = (props: any) => {
                 } else if (grid[x][y] === 0 && neighbors === 3) {
                     newGrid[x][y] = 1;
                 }
-                totalNeighbors += neighbors;
             }
         }
-        return { newGrid, totalNeighbors };
+        return newGrid;
     }
 
     function render(
@@ -169,6 +183,10 @@ const Game = (props: any) => {
         setNumberOfClicks((prevCount) => prevCount + 1); // Increment click count
     }
 
+    const handleChange = (event: React.SyntheticEvent, newValue: string) => {
+        setValue(newValue);
+    };
+
     useEffect(() => {
         const canvas = canvasRef.current;
         if (canvas) {
@@ -191,7 +209,7 @@ const Game = (props: any) => {
             style={{
                 display: "flex",
                 flexDirection: "row",
-                alignItems: "center",
+                // alignItems: "center",
                 justifyContent: "center",
                 width: "100%",
                 height: "100%",
@@ -258,12 +276,101 @@ const Game = (props: any) => {
                 {clicksMode ? (
                     <h3>Number Of Clicks: {numberOfClicks}</h3>
                 ) : (
-                    <h3>
-                        Time: {((Date.now() - startTime) / 1000).toFixed(2)}{" "}
-                        seconds
-                    </h3>
+                    <h3>{((Date.now() - startTime) / 1000).toFixed(2)}</h3>
                 )}
             </div>
+            <div
+                style={{
+                    width: "30%",
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "start",
+                    justifyContent: "flex-start",
+                }}
+            >
+                <Tabs
+                    value={value}
+                    onChange={handleChange}
+                    aria-label="simple tabs example"
+                    indicatorColor="primary"
+                    textColor="primary"
+                >
+                    <Tab
+                        value="leaderboard"
+                        label="Leaderboard"
+                        style={{
+                            color: value === "leaderboard" ? "red" : "white",
+                        }}
+                    />
+                    <Tab
+                        value="settings"
+                        label="Settings"
+                        style={{
+                            color: value === "settings" ? "red" : "white",
+                        }}
+                    />
+                </Tabs>
+                {value === "leaderboard" && (
+                    <div>
+                        <h2>Leaderboard</h2>
+                        {/* Add leaderboard content here */}
+                    </div>
+                )}
+                {value === "settings" && (
+                    <div>
+                        <h2>Settings</h2>
+                        {/* Add settings content here */}
+                    </div>
+                )}
+            </div>
+            <Modal open={won} onClose={() => setWon(false)}>
+                <div
+                    style={{
+                        display: "flex",
+                        flexDirection: "column",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        width: "100%",
+                        height: "100%",
+                        backgroundColor: "rgba(0, 0, 0, 0.5)",
+                        position: "absolute",
+                        top: 0,
+                        left: 0,
+                        zIndex: 10000,
+                    }}
+                >
+                    <div
+                        style={{
+                            display: "flex",
+                            flexDirection: "column",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            backgroundColor: "black",
+                            padding: "40px",
+                            border: "1px solid white",
+                            borderRadius: "10%",
+                        }}
+                    >
+                        <h1>You won!</h1>
+                        <h2>
+                            {clicksMode
+                                ? `You won in ${numberOfClicks} clicks`
+                                : `You won in ${
+                                      (Date.now() - startTime) / 1000
+                                  } seconds`}
+                        </h2>
+                        <Button
+                            variant="contained"
+                            onClick={() => {
+                                setWon(false);
+                                reset();
+                            }}
+                        >
+                            Reset
+                        </Button>
+                    </div>
+                </div>
+            </Modal>
         </div>
     );
 };
