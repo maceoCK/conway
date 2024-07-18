@@ -1,11 +1,17 @@
 import { useEffect, useRef, useState } from "react";
 import { Button, Modal, Tabs, Tab } from "@mui/material";
+import Leaderboard from "./Leaderboard";
 
 const canvasSize = {
     width: 500,
     height: 500,
     resolution: 10,
 };
+
+interface leaderboardData {
+    name: string;
+    score: number;
+}
 
 const Game = (props: any) => {
     const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -16,6 +22,10 @@ const Game = (props: any) => {
     const [clicksMode, setClicksMode] = useState(false);
     const [won, setWon] = useState(false);
     const [value, setValue] = useState("leaderboard"); // State to manage current tab
+    const [leaderboardData, setLeaderboardData] = useState<leaderboardData[]>(
+        []
+    );
+    const [scoreLabel, setScoreLabel] = useState("Seconds");
 
     function buildGrid() {
         const grid = new Array(canvasSize.width / canvasSize.resolution)
@@ -37,6 +47,7 @@ const Game = (props: any) => {
             if (context) {
                 const grid = buildGrid();
                 render(grid, context);
+                setStartTime(Date.now());
                 const animate = () => {
                     setGrid((prevGrid) => {
                         const newGrid = updateGrid(prevGrid);
@@ -91,6 +102,13 @@ const Game = (props: any) => {
         if (animationRef.current) {
             cancelAnimationFrame(animationRef.current);
         }
+        const time = (Date.now() - startTime) / 1000;
+        console.log(time);
+        const score = clicksMode ? numberOfClicks : time;
+        setLeaderboardData((prevData) => [
+            ...prevData,
+            { name: "Player", score },
+        ]);
         setWon(true);
     };
 
@@ -183,7 +201,7 @@ const Game = (props: any) => {
         setNumberOfClicks((prevCount) => prevCount + 1); // Increment click count
     }
 
-    const handleChange = (event: React.SyntheticEvent, newValue: string) => {
+    const handleChange = (_event: React.SyntheticEvent, newValue: string) => {
         setValue(newValue);
     };
 
@@ -228,7 +246,12 @@ const Game = (props: any) => {
             >
                 <Button
                     variant="contained"
-                    onClick={() => setClicksMode(!clicksMode)}
+                    onClick={() => {
+                        setClicksMode((prevMode) => {
+                            setScoreLabel(!prevMode ? "Clicks" : "Seconds");
+                            return !prevMode;
+                        });
+                    }}
                     fullWidth
                     style={{
                         backgroundColor: "blue",
@@ -311,9 +334,11 @@ const Game = (props: any) => {
                     />
                 </Tabs>
                 {value === "leaderboard" && (
-                    <div>
-                        <h2>Leaderboard</h2>
-                        {/* Add leaderboard content here */}
+                    <div style={{ width: "100%" }}>
+                        <Leaderboard
+                            leaderboardData={leaderboardData}
+                            scoreLabel={scoreLabel}
+                        />
                     </div>
                 )}
                 {value === "settings" && (
